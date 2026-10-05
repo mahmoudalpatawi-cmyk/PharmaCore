@@ -6,9 +6,9 @@
 - [x] **Clean Architecture Scaffolding:** Initialized Domain, Application, Infrastructure, and API projects with proper references.
 
 ## Phase 2: Domain Layer (Core Entities) (Completed ✅)
-- [x] **BaseEntity Implementation:** Added `Id`, `CreatedAt`, `UpdatedAt`, `IsActive` in the Common folder.
-- [x] **Domain Enums:** Created separate enum files for `PaymentMethod`, `ShiftStatus`, `TransactionType`, etc.
-- [x] **Entity Models:** Programmed Pure POCO entities (Tenant, Branch, Medicine, Batch, Sale, etc.) strictly without Data Annotations.
+- [x] **BaseEntity Implementation:** Added `Id`, `CreatedAt`, `UpdatedAt`, `IsActive` in the Common folder (`BaseEntity<TId>`, `BaseEntity`, `IMustHaveTenant`, `ISoftDelete`).
+- [x] **Domain Enums:** Created separate enum files for `PaymentMethod`, `ShiftStatus`, `TransactionType`, `StockMovementType`, `InvoiceType`, `InvoiceStatus`, `StockTransferStatus`, `PurchaseOrderStatus`.
+- [x] **Entity Models (Full 31 ERD Entities):** Programmed Pure POCO entities strictly without Data Annotations covering Multi-Tenancy, Identity, Catalog, Inventory & Batches, Inter-branch Stock Transfers, Purchasing & Procurement, Returns, POS & Split Payments, Shifts, Insurance, Financial Ledgers, Prescriptions, AI Forecasting, and Audit Logging.
 - [ ] **Git Commit & Push:** Commit Domain Entities and merge with the main branch via Pull Request.
 
 ## Phase 3: Infrastructure Layer & Database ⏳
