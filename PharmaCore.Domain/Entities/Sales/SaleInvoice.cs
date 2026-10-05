@@ -10,6 +10,9 @@ public class SaleInvoice : BaseEntity, IMustHaveTenant, ISoftDelete
     public Guid TenantId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
 
+    public int? SaleId { get; set; }
+    public Sale? Sale { get; set; }
+
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
 

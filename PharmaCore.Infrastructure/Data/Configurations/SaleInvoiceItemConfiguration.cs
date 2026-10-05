@@ -10,17 +10,12 @@ public class SaleInvoiceItemConfiguration : IEntityTypeConfiguration<SaleInvoice
     {
         builder.HasKey(sii => sii.Id);
 
-        // Ignore the alias properties to prevent EF Core from creating duplicate foreign keys
-        builder.Ignore(sii => sii.MedicineBatchId);
-        builder.Ignore(sii => sii.MedicineBatch);
-
         // Monetary Precision
         builder.Property(sii => sii.UnitPrice).HasColumnType("decimal(18,2)");
         builder.Property(sii => sii.SubTotal).HasColumnType("decimal(18,2)");
         builder.Property(sii => sii.Discount).HasColumnType("decimal(18,2)");
 
-        // Global Query Filter
-        builder.HasQueryFilter(sii => sii.IsActive);
+        // NOTE: Global Query Filters for Soft Delete/Tenancy are applied in ApplicationDbContext.
 
         // Relationships
         builder.HasOne(sii => sii.SaleInvoice)

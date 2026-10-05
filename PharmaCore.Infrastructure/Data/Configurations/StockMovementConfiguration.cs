@@ -10,17 +10,11 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
     {
         builder.HasKey(sm => sm.Id);
 
-        // Ignore the alias properties to prevent EF Core from creating duplicate foreign keys
-        builder.Ignore(sm => sm.MedicineBatchId);
-        builder.Ignore(sm => sm.MedicineBatch);
-
         // Properties
         builder.Property(sm => sm.Reason).HasMaxLength(500);
-        builder.Property(sm => sm.ReferenceInvoiceId).HasMaxLength(100);
+        builder.Property(sm => sm.ReferenceDocumentId).HasMaxLength(100);
 
-        // Global Query Filter for Soft Delete (Inherits from BaseEntity, but does it have IsActive?)
-        // StockMovement inherits from BaseEntity which has IsActive
-        builder.HasQueryFilter(sm => sm.IsActive);
+        // NOTE: Global Query Filters for Soft Delete/Tenancy are applied in ApplicationDbContext.
 
         // Relationships
         builder.HasOne(sm => sm.Branch)
