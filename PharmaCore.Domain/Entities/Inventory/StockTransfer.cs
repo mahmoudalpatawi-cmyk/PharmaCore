@@ -10,10 +10,10 @@ public class StockTransfer : BaseEntity, IMustHaveTenant, ISoftDelete
     public Guid TenantId { get; set; }
 
     public int FromBranchId { get; set; }
-    public Branch? FromBranch { get; set; }
+    public Branch FromBranch { get; set; } = null!;
 
     public int ToBranchId { get; set; }
-    public Branch? ToBranch { get; set; }
+    public Branch ToBranch { get; set; } = null!;
 
     public int? UserId { get; set; }
     public ApplicationUser? User { get; set; }

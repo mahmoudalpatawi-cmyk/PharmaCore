@@ -34,7 +34,9 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
         // Relationships
         // Users, Batches, Shifts, Sales, etc., with No Cascade Delete
         builder.HasMany(b => b.Users)
-            .WithMany(); // Adjust if ApplicationUser has navigation property to Branch
+            .WithOne(u => u.Branch)
+            .HasForeignKey(u => u.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
             
         builder.HasMany(b => b.Batches)
             .WithOne(bat => bat.Branch)
@@ -62,13 +64,13 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(b => b.OutgoingTransfers)
-            .WithOne(st => st.SourceBranch)
-            .HasForeignKey(st => st.SourceBranchId)
+            .WithOne(st => st.FromBranch)
+            .HasForeignKey(st => st.FromBranchId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(b => b.IncomingTransfers)
-            .WithOne(st => st.DestinationBranch)
-            .HasForeignKey(st => st.DestinationBranchId)
+            .WithOne(st => st.ToBranch)
+            .HasForeignKey(st => st.ToBranchId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(b => b.InventoryTransactions)
