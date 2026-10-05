@@ -90,6 +90,16 @@ public class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
         
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Global override to prevent cascading deletes
+        var cascadeFKs = modelBuilder.Model.GetEntityTypes()
+            .SelectMany(t => t.GetForeignKeys())
+            .Where(fk => !fk.IsOwnership && fk.DeleteBehavior == DeleteBehavior.Cascade);
+
+        foreach (var fk in cascadeFKs)
+        {
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        }
     }
 
     public override int SaveChanges()

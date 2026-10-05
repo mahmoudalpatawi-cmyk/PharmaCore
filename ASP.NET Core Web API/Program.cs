@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using PharmaCore.Infrastructure.Data;
 
 namespace ASP.NET_Core_Web_API
 {
@@ -12,6 +14,10 @@ namespace ASP.NET_Core_Web_API
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+
+            var connectionString = builder.Configuration.GetConnectionString("MahmoudConnection");
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(connectionString));
 
             var app = builder.Build();
 
