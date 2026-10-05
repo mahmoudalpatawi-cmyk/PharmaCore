@@ -10,7 +10,6 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
     {
         builder.HasKey(t => t.Id);
 
-        // Properties
         builder.Property(t => t.Name)
             .IsRequired()
             .HasMaxLength(256);
@@ -19,8 +18,12 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .IsRequired()
             .HasMaxLength(50);
 
-        // Global Query Filter for Soft Delete
-        builder.HasQueryFilter(t => t.IsActive);
+        // Tenant codes must be globally unique.
+        builder.HasIndex(t => t.Code).IsUnique();
+
+        // NOTE: Global query filter (!IsDeleted) is applied generically in ApplicationDbContext.
+        // Tenant does NOT implement IMustHaveTenant (it IS the tenant root).
+        // Its filter applies only ISoftDelete: !IsDeleted.
 
         // Relationships
         builder.HasMany(t => t.Branches)

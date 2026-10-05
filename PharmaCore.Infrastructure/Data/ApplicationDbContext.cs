@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using PharmaCore.Domain.Common;
 using PharmaCore.Domain.Entities.Analytics;
@@ -12,15 +13,28 @@ using PharmaCore.Domain.Entities.MultiTenancy;
 using PharmaCore.Domain.Entities.Purchasing;
 using PharmaCore.Domain.Entities.Sales;
 using PharmaCore.Domain.Entities.Shifts;
-using System.Reflection;
 
 namespace PharmaCore.Infrastructure.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    /// <summary>
+    /// The tenant ID resolved from the current HTTP request (via ITenantProvider).
+    /// Captured once per DbContext lifetime (= once per DI scope = once per request).
+    /// Referenced as a closure in HasQueryFilter expressions, which EF Core evaluates
+    /// at query time from the current DbContext instance — providing correct per-request
+    /// tenant isolation without the performance cost of resolving the tenant on every query.
+    /// </summary>
+    private readonly Guid _currentTenantId;
+
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        ITenantProvider tenantProvider) : base(options)
     {
+        _currentTenantId = tenantProvider.GetTenantId();
     }
+
+    // ─── DbSets ───────────────────────────────────────────────────────────────
 
     // Analytics
     public DbSet<AiForecastLog> AiForecastLogs => Set<AiForecastLog>();
@@ -54,10 +68,11 @@ public class ApplicationDbContext : DbContext
     // Inventory
     public DbSet<Batch> Batches => Set<Batch>();
     public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
-    public DbSet<MedicineBatch> MedicineBatches => Set<MedicineBatch>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
     public DbSet<StockTransferItem> StockTransferItems => Set<StockTransferItem>();
+    // NOTE: MedicineBatches DbSet intentionally removed. MedicineBatch is a deprecated
+    // alias class that caused EF Core TPH Discriminator issues. Use Batches instead.
 
     // MultiTenancy
     public DbSet<Branch> Branches => Set<Branch>();
@@ -85,22 +100,102 @@ public class ApplicationDbContext : DbContext
     // Shifts
     public DbSet<Shift> Shifts => Set<Shift>();
 
+    // ─── Model Configuration ──────────────────────────────────────────────────
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
+        // Exclude the deprecated MedicineBatch alias class from the EF Core model entirely.
+        // Without this, EF Core would add a Discriminator column to the Batches table (TPH).
+        modelBuilder.Ignore<MedicineBatch>();
+
+        // Apply all IEntityTypeConfiguration<T> classes discovered in this assembly.
+        // These handle: property MaxLength, decimal precision, indexes, and FK relationships.
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-        // Global override to prevent cascading deletes
-        var cascadeFKs = modelBuilder.Model.GetEntityTypes()
-            .SelectMany(t => t.GetForeignKeys())
-            .Where(fk => !fk.IsOwnership && fk.DeleteBehavior == DeleteBehavior.Cascade);
+        // Apply global query filters AFTER configurations, so all entity types are registered.
+        // Filters are applied per-interface: IMustHaveTenant, ISoftDelete, or both.
+        ApplyGlobalQueryFilters(modelBuilder);
 
-        foreach (var fk in cascadeFKs)
+        // Safety net: override any Cascade delete behaviors that were not explicitly
+        // set to Restrict in individual configurations. This prevents accidental
+        // historical data destruction (e.g., deleting a Supplier cascading to Batches).
+        foreach (var fk in modelBuilder.Model.GetEntityTypes()
+            .SelectMany(t => t.GetForeignKeys())
+            .Where(fk => !fk.IsOwnership && fk.DeleteBehavior == DeleteBehavior.Cascade))
         {
             fk.DeleteBehavior = DeleteBehavior.Restrict;
         }
     }
+
+    // ─── Global Query Filter Infrastructure ──────────────────────────────────
+
+    /// <summary>
+    /// Iterates every entity type in the model and applies the appropriate query filter
+    /// based on which multi-tenancy/soft-delete interfaces the entity implements.
+    /// 
+    /// Three cases:
+    ///   IMustHaveTenant + ISoftDelete → filter on TenantId AND !IsDeleted
+    ///   IMustHaveTenant only          → filter on TenantId only
+    ///   ISoftDelete only              → filter on !IsDeleted only (e.g., Tenant itself)
+    /// 
+    /// The generic private methods are invoked via reflection to satisfy EF Core's
+    /// requirement for strongly-typed HasQueryFilter<T> expressions.
+    /// The closure captures `_currentTenantId` from the current DbContext instance,
+    /// which EF Core re-evaluates per query (not once at model build time).
+    /// </summary>
+    private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            var clrType = entityType.ClrType;
+            var isTenant = typeof(IMustHaveTenant).IsAssignableFrom(clrType);
+            var isSoftDelete = typeof(ISoftDelete).IsAssignableFrom(clrType);
+
+            if (isTenant && isSoftDelete)
+            {
+                GetType()
+                    .GetMethod(nameof(ApplyTenantAndSoftDeleteFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .MakeGenericMethod(clrType)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+            else if (isTenant)
+            {
+                GetType()
+                    .GetMethod(nameof(ApplyTenantOnlyFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .MakeGenericMethod(clrType)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+            else if (isSoftDelete)
+            {
+                GetType()
+                    .GetMethod(nameof(ApplySoftDeleteOnlyFilter), BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .MakeGenericMethod(clrType)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+        }
+    }
+
+    private void ApplyTenantAndSoftDeleteFilter<T>(ModelBuilder modelBuilder)
+        where T : class, IMustHaveTenant, ISoftDelete
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == _currentTenantId && !e.IsDeleted);
+    }
+
+    private void ApplyTenantOnlyFilter<T>(ModelBuilder modelBuilder)
+        where T : class, IMustHaveTenant
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == _currentTenantId);
+    }
+
+    private void ApplySoftDeleteOnlyFilter<T>(ModelBuilder modelBuilder)
+        where T : class, ISoftDelete
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
+    }
+
+    // ─── Save Interceptors ────────────────────────────────────────────────────
 
     public override int SaveChanges()
     {
@@ -114,34 +209,23 @@ public class ApplicationDbContext : DbContext
         return base.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Stamps CreatedAt/UpdatedAt on all auditable entities before saving.
+    /// 
+    /// FIX: Uses a single loop over IAuditableEntity (implemented by BaseEntity&lt;TId&gt;).
+    /// The previous implementation used two separate loops — one for BaseEntity&lt;int&gt;
+    /// and one for BaseEntity&lt;Guid&gt; — causing all int-keyed entities to be stamped twice.
+    /// This unified loop eliminates the double-processing bug.
+    /// </summary>
     private void ApplyAuditInformation()
     {
-        var entries = ChangeTracker.Entries<BaseEntity>();
-
-        foreach (var entry in entries)
+        foreach (var entry in ChangeTracker.Entries<IAuditableEntity>())
         {
             switch (entry.State)
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
                     break;
-
-                case EntityState.Modified:
-                    entry.Entity.UpdatedAt = DateTime.UtcNow;
-                    break;
-            }
-        }
-        
-        var guidEntries = ChangeTracker.Entries<BaseEntity<Guid>>();
-
-        foreach (var entry in guidEntries)
-        {
-            switch (entry.State)
-            {
-                case EntityState.Added:
-                    entry.Entity.CreatedAt = DateTime.UtcNow;
-                    break;
-
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
                     break;
