@@ -22,9 +22,6 @@ public class PurchaseInvoiceItem : BaseEntity, IMustHaveTenant
     public int PurchaseInvoiceId { get; set; }
     public PurchaseInvoice? PurchaseInvoice { get; set; }
 
-    public int MedicineId { get; set; }
-    public Medicine? Medicine { get; set; }
-
     /// <summary>
     /// Link to the Batch created when this invoice line's goods were received into inventory.
     /// Null until goods-receiving is confirmed.
@@ -32,10 +29,6 @@ public class PurchaseInvoiceItem : BaseEntity, IMustHaveTenant
     public int? BatchId { get; set; }
     public Batch? Batch { get; set; }
 
-    /// <summary>The supplier's batch/lot number printed on the packaging.</summary>
-    public string BatchNumber { get; set; } = string.Empty;
-
-    public DateTime ExpirationDate { get; set; }
     public int Quantity { get; set; }
     public decimal PurchasePrice { get; set; }
     public decimal SellingPrice { get; set; }

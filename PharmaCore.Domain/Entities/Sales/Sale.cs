@@ -101,6 +101,18 @@ namespace PharmaCore.Domain.Entities.Sales
             NetAmount = TotalAmount - Discount - InsuranceCoverageAmount;
         }
 
+        public void EarnPoints(int points)
+        {
+            if (points < 0) throw new ArgumentException("Points cannot be negative.");
+            PointsEarned += points;
+        }
+
+        public void RedeemPoints(int points)
+        {
+            if (points < 0) throw new ArgumentException("Points cannot be negative.");
+            PointsRedeemed += points;
+        }
+
         // ملاحظة: لاحقاً عند برمجة SaleItem، سنقوم بعمل دالة AddItem هنا 
         // لتقوم بزيادة الـ TotalAmount أوتوماتيكياً كلما أضفنا دواء للفاتورة.
     }

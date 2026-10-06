@@ -18,20 +18,13 @@ namespace PharmaCore.Infrastructure.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    /// <summary>
-    /// The tenant ID resolved from the current HTTP request (via ITenantProvider).
-    /// Captured once per DbContext lifetime (= once per DI scope = once per request).
-    /// Referenced as a closure in HasQueryFilter expressions, which EF Core evaluates
-    /// at query time from the current DbContext instance — providing correct per-request
-    /// tenant isolation without the performance cost of resolving the tenant on every query.
-    /// </summary>
-    private readonly Guid _currentTenantId;
+    private readonly ITenantProvider? _tenantProvider;
 
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
-        ITenantProvider tenantProvider) : base(options)
+        ITenantProvider? tenantProvider = null) : base(options)
     {
-        _currentTenantId = tenantProvider.GetTenantId();
+        _tenantProvider = tenantProvider;
     }
 
     // ─── DbSets ───────────────────────────────────────────────────────────────
@@ -67,12 +60,9 @@ public class ApplicationDbContext : DbContext
 
     // Inventory
     public DbSet<Batch> Batches => Set<Batch>();
-    //public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
     public DbSet<StockTransferItem> StockTransferItems => Set<StockTransferItem>();
-    // NOTE: MedicineBatches DbSet intentionally removed. MedicineBatch is a deprecated
-    // alias class that caused EF Core TPH Discriminator issues. Use Batches instead.
 
     // MultiTenancy
     public DbSet<Branch> Branches => Set<Branch>();
@@ -105,10 +95,6 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        // Exclude the deprecated MedicineBatch alias class from the EF Core model entirely.
-        // Without this, EF Core would add a Discriminator column to the Batches table (TPH).
-        modelBuilder.Ignore<MedicineBatch>();
 
         // Apply all IEntityTypeConfiguration<T> classes discovered in this assembly.
         // These handle: property MaxLength, decimal precision, indexes, and FK relationships.
@@ -177,16 +163,25 @@ public class ApplicationDbContext : DbContext
         }
     }
 
+    private Guid CurrentTenantId
+    {
+        get
+        {
+            try { return _tenantProvider?.GetTenantId() ?? Guid.Empty; }
+            catch { return Guid.Empty; } // Fallback for design-time tools
+        }
+    }
+
     private void ApplyTenantAndSoftDeleteFilter<T>(ModelBuilder modelBuilder)
         where T : class, IMustHaveTenant, ISoftDelete
     {
-        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == _currentTenantId && !e.IsDeleted);
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == CurrentTenantId && !e.IsDeleted);
     }
 
     private void ApplyTenantOnlyFilter<T>(ModelBuilder modelBuilder)
         where T : class, IMustHaveTenant
     {
-        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == _currentTenantId);
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
     }
 
     private void ApplySoftDeleteOnlyFilter<T>(ModelBuilder modelBuilder)

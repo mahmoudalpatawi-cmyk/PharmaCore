@@ -6,27 +6,54 @@ namespace PharmaCore.Domain.Entities.Purchasing;
 
 public class PurchaseInvoice : BaseEntity, IMustHaveTenant, ISoftDelete
 {
-    public Guid TenantId { get; set; }
-    public string InvoiceNumber { get; set; } = string.Empty;
+    public Guid TenantId { get; private set; }
+    public string InvoiceNumber { get; private set; } = string.Empty;
 
-    public int SupplierId { get; set; }
-    public Supplier? Supplier { get; set; }
+    public int SupplierId { get; private set; }
+    public Supplier? Supplier { get; private set; }
 
-    public int BranchId { get; set; }
-    public Branch? Branch { get; set; }
+    public int BranchId { get; private set; }
+    public Branch? Branch { get; private set; }
 
-    public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
-    public decimal TotalAmount { get; set; }
-    public decimal TaxAmount { get; set; }
-    public decimal DiscountAmount { get; set; }
-    public decimal PaidAmount { get; set; }
-    public decimal RemainingAmount { get; set; }
+    public DateTime InvoiceDate { get; private set; } = DateTime.UtcNow;
+    public decimal TotalAmount { get; private set; }
+    public decimal TaxAmount { get; private set; }
+    public decimal DiscountAmount { get; private set; }
+    public decimal PaidAmount { get; private set; }
+    public decimal RemainingAmount { get; private set; }
 
-    public PaymentMethod PaymentMethod { get; set; }
-    public InvoiceStatus Status { get; set; } = InvoiceStatus.Completed;
+    public PaymentMethod PaymentMethod { get; private set; }
+    public InvoiceStatus Status { get; private set; } = InvoiceStatus.Completed;
 
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
 
-    public ICollection<PurchaseInvoiceItem> Items { get; set; } = new List<PurchaseInvoiceItem>();
+    public ICollection<PurchaseInvoiceItem> Items { get; private set; } = new List<PurchaseInvoiceItem>();
+
+    private PurchaseInvoice() { }
+
+    public PurchaseInvoice(
+        Guid tenantId,
+        string invoiceNumber,
+        int supplierId,
+        int branchId,
+        PaymentMethod paymentMethod,
+        decimal totalAmount,
+        decimal taxAmount,
+        decimal discountAmount,
+        decimal paidAmount)
+    {
+        TenantId = tenantId;
+        InvoiceNumber = invoiceNumber;
+        SupplierId = supplierId;
+        BranchId = branchId;
+        PaymentMethod = paymentMethod;
+        TotalAmount = totalAmount;
+        TaxAmount = taxAmount;
+        DiscountAmount = discountAmount;
+        PaidAmount = paidAmount;
+        RemainingAmount = totalAmount + taxAmount - discountAmount - paidAmount;
+        InvoiceDate = DateTime.UtcNow;
+        Status = InvoiceStatus.Completed;
+    }
 }
