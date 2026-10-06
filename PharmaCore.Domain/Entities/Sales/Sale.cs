@@ -42,4 +42,5 @@ public class Sale : BaseEntity, IMustHaveTenant, ISoftDelete
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<SalesReturn> SalesReturns { get; set; } = new List<SalesReturn>();
     public ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
+    public ICollection<SaleInvoice> Invoices { get; set; } = new List<SaleInvoice>();
 }

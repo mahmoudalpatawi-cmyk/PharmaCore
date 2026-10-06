@@ -10,7 +10,6 @@ public class MedicineConfiguration : IEntityTypeConfiguration<Medicine>
     {
         builder.HasKey(m => m.Id);
 
-        // Properties
         builder.Property(m => m.Name)
             .IsRequired()
             .HasMaxLength(256);
@@ -33,18 +32,17 @@ public class MedicineConfiguration : IEntityTypeConfiguration<Medicine>
         builder.Property(m => m.SecondaryUnit)
             .HasMaxLength(50);
 
-        builder.Property(m => m.UnitOfMeasure)
-            .IsRequired()
+        builder.Property(m => m.TertiaryUnit)
             .HasMaxLength(50);
 
-        // Monetary
         builder.Property(m => m.SellingPrice)
             .HasColumnType("decimal(18,2)");
+            
+        builder.Property(m => m.PrimaryToSecondaryConversionFactor)
+            .HasColumnType("decimal(18,4)");
 
-        // Global Query Filter for Soft Delete
-        builder.HasQueryFilter(m => m.IsActive);
+        builder.HasIndex(m => new { m.TenantId, m.Barcode }).IsUnique().HasFilter("[Barcode] IS NOT NULL");
 
-        // Relationships
         builder.HasOne(m => m.Category)
             .WithMany(c => c.Medicines)
             .HasForeignKey(m => m.CategoryId)

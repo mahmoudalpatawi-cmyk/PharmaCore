@@ -10,7 +10,6 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
     {
         builder.HasKey(b => b.Id);
 
-        // Properties
         builder.Property(b => b.Name)
             .IsRequired()
             .HasMaxLength(256);
@@ -23,21 +22,27 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
             .HasMaxLength(500);
 
         builder.Property(b => b.Phone)
-            .HasMaxLength(50);
+            .HasMaxLength(30);
 
         builder.Property(b => b.ManagerName)
             .HasMaxLength(256);
 
-        // Global Query Filter for Soft Delete
-        builder.HasQueryFilter(b => b.IsActive);
+        // Branch codes must be unique within a tenant.
+        builder.HasIndex(b => new { b.TenantId, b.Code }).IsUnique();
 
-        // Relationships
-        // Users, Batches, Shifts, Sales, etc., with No Cascade Delete
+        // NOTE: Global query filters (TenantId + !IsDeleted) are applied generically
+        // in ApplicationDbContext. Do NOT add HasQueryFilter here.
+
+        // ─── Relationships ────────────────────────────────────────────────────
+        // Configured from the Branch (principal) side. All use Restrict to prevent
+        // accidental cascade-deletion of historical operational data.
+
         builder.HasMany(b => b.Users)
             .WithOne(u => u.Branch)
             .HasForeignKey(u => u.BranchId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
-            
+
         builder.HasMany(b => b.Batches)
             .WithOne(bat => bat.Branch)
             .HasForeignKey(bat => bat.BranchId)

@@ -19,13 +19,14 @@ public class Medicine : BaseEntity, IMustHaveTenant, ISoftDelete
 
     public string PrimaryUnit { get; set; } = string.Empty;
     public string? SecondaryUnit { get; set; }
-    public int ConversionFactor { get; set; } = 1;
+    public string? TertiaryUnit { get; set; }
+
+    public decimal PrimaryToSecondaryConversionFactor { get; set; } = 1m;
+    public int SecondaryToTertiaryConversionFactor { get; set; } = 1;
 
     public decimal SellingPrice { get; set; }
-    public int MinStockLevel { get; set; }
-    public int MinimumThreshold { get; set; }
-    public string UnitOfMeasure { get; set; } = string.Empty;
 
+    public int MinStockLevel { get; set; }
     public bool IsScheduleDrug { get; set; }
 
     public bool IsDeleted { get; set; }

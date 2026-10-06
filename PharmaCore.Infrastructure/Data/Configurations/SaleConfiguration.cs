@@ -27,8 +27,7 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.Property(s => s.NetAmount)
             .HasColumnType("decimal(18,2)");
 
-        // Global Query Filter for Soft Delete
-        builder.HasQueryFilter(s => s.IsActive);
+        // NOTE: Global Query Filters for Soft Delete/Tenancy are applied in ApplicationDbContext.
 
         // Relationships
         builder.HasOne(s => s.Shift)
@@ -74,6 +73,11 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.HasMany(s => s.Prescriptions)
             .WithOne(p => p.Sale)
             .HasForeignKey(p => p.SaleId)
+            .OnDelete(DeleteBehavior.Restrict);
+            
+        builder.HasMany(s => s.Invoices)
+            .WithOne(si => si.Sale)
+            .HasForeignKey(si => si.SaleId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
