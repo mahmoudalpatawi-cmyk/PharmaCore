@@ -10,8 +10,7 @@ public class PurchaseInvoiceItemConfiguration : IEntityTypeConfiguration<Purchas
     {
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.BatchNumber)
-            .HasMaxLength(100);
+
 
         builder.Property(p => p.PurchasePrice)
             .HasColumnType("decimal(18,2)");
@@ -27,10 +26,6 @@ public class PurchaseInvoiceItemConfiguration : IEntityTypeConfiguration<Purchas
             .HasForeignKey(p => p.PurchaseInvoiceId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(p => p.Medicine)
-            .WithMany()
-            .HasForeignKey(p => p.MedicineId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         // New BatchId relationship
         builder.HasOne(p => p.Batch)

@@ -24,7 +24,7 @@ public class SaleInvoiceConfiguration : IEntityTypeConfiguration<SaleInvoice>
         builder.HasIndex(si => new { si.TenantId, si.InvoiceNumber }).IsUnique();
 
         builder.HasOne(si => si.Sale)
-            .WithMany(s => s.Invoices)
+            .WithMany()
             .HasForeignKey(si => si.SaleId)
             .OnDelete(DeleteBehavior.Restrict);
 

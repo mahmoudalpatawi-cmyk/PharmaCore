@@ -6,7 +6,7 @@ namespace PharmaCore.Domain.Entities.Purchasing;
 
 public class PurchaseInvoice : BaseEntity, IMustHaveTenant, ISoftDelete
 {
-    public Guid TenantId { get; private set; }
+    public Guid TenantId { get; set; }
     public string InvoiceNumber { get; private set; } = string.Empty;
 
     public int SupplierId { get; private set; }

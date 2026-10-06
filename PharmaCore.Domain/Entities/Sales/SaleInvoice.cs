@@ -7,7 +7,7 @@ namespace PharmaCore.Domain.Entities.Sales;
 
 public class SaleInvoice : BaseEntity, IMustHaveTenant, ISoftDelete
 {
-    public Guid TenantId { get; private set; }
+    public Guid TenantId { get; set; }
     public string InvoiceNumber { get; private set; } = string.Empty;
 
     public int? SaleId { get; private set; }

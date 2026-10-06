@@ -70,14 +70,6 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
             .HasForeignKey(sr => sr.SaleId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(s => s.Prescriptions)
-            .WithOne(p => p.Sale)
-            .HasForeignKey(p => p.SaleId)
-            .OnDelete(DeleteBehavior.Restrict);
-            
-        builder.HasMany(s => s.Invoices)
-            .WithOne(si => si.Sale)
-            .HasForeignKey(si => si.SaleId)
-            .OnDelete(DeleteBehavior.Restrict);
+
     }
 }
