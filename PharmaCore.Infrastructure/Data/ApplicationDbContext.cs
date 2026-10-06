@@ -67,7 +67,7 @@ public class ApplicationDbContext : DbContext
 
     // Inventory
     public DbSet<Batch> Batches => Set<Batch>();
-    public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
+    //public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
     public DbSet<StockTransferItem> StockTransferItems => Set<StockTransferItem>();

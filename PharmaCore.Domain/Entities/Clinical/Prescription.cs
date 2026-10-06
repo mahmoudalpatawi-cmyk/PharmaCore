@@ -13,6 +13,8 @@ public class Prescription : BaseEntity, IMustHaveTenant, ISoftDelete
 
     public string DoctorName { get; set; } = string.Empty;
     public string PatientName { get; set; } = string.Empty;
+
+    public string? ApprovalNumber { get; set; }
     public string? ImageUrl { get; set; }
     public DateTime PrescriptionDate { get; set; } = DateTime.UtcNow;
 

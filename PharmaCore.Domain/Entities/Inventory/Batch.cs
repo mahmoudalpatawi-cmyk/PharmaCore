@@ -121,7 +121,8 @@ public class Batch : BaseEntity, IMustHaveTenant, ISoftDelete
 
     // ─── Navigation Collections ───────────────────────────────────────────────
 
-    public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
+    //public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
+    public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
     public ICollection<StockTransferItem> StockTransferItems { get; set; } = new List<StockTransferItem>();
     public ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
     public ICollection<SalesReturnItem> SalesReturnItems { get; set; } = new List<SalesReturnItem>();
