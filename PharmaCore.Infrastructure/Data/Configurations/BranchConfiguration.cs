@@ -78,10 +78,10 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
             .HasForeignKey(st => st.ToBranchId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(b => b.InventoryTransactions)
-            .WithOne(it => it.Branch)
-            .HasForeignKey(it => it.BranchId)
-            .OnDelete(DeleteBehavior.Restrict);
+        //builder.HasMany(b => b.InventoryTransactions)
+        //    .WithOne(it => it.Branch)
+        //    .HasForeignKey(it => it.BranchId)
+        //    .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(b => b.CashTransactions)
             .WithOne(ct => ct.Branch)

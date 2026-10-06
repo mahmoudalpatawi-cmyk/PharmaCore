@@ -1,4 +1,5 @@
 using PharmaCore.Domain.Common;
+using PharmaCore.Domain.Entities.Identity;
 using PharmaCore.Domain.Entities.MultiTenancy;
 using PharmaCore.Domain.Enums;
 

@@ -30,7 +30,7 @@ public class Branch : BaseEntity, IMustHaveTenant, ISoftDelete
     public ICollection<PurchaseReturn> PurchaseReturns { get; set; } = new List<PurchaseReturn>();
     public ICollection<StockTransfer> OutgoingTransfers { get; set; } = new List<StockTransfer>();
     public ICollection<StockTransfer> IncomingTransfers { get; set; } = new List<StockTransfer>();
-    public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
+    //public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
     public ICollection<CashTransaction> CashTransactions { get; set; } = new List<CashTransaction>();
     public ICollection<SaleInvoice> SaleInvoices { get; set; } = new List<SaleInvoice>();
     public ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();
