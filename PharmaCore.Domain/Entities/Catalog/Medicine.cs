@@ -12,6 +12,13 @@ public class Medicine : BaseEntity, IMustHaveTenant, ISoftDelete
     public int CategoryId { get; set; }
     public Category? Category { get; set; }
 
+    public int ManufacturerId { get; set; }
+    public Manufacturer? Manufacturer { get; set; }
+
+    public string DosageForm { get; set; } = string.Empty;
+    public string Strength { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+
     public string Name { get; set; } = string.Empty;
     public string TradeName { get; set; } = string.Empty;
     public string GenericName { get; set; } = string.Empty;
