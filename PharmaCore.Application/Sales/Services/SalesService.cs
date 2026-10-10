@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using PharmaCore.Application.Identity.Interfaces;
 using PharmaCore.Application.Sales.DTOs;
 using PharmaCore.Application.Sales.Interfaces;
 using PharmaCore.Domain.Common;
@@ -20,6 +21,7 @@ public class SalesService : ISalesService
     private readonly IRepository<Customer> _customerRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantProvider _tenantProvider;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public SalesService(
@@ -29,19 +31,26 @@ public class SalesService : ISalesService
         IRepository<Customer> customerRepository,
         IUnitOfWork unitOfWork,
         ITenantProvider tenantProvider,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
-        _invoiceRepository = invoiceRepository;
-        _batchRepository = batchRepository;
-        _stockMovementRepository = stockMovementRepository;
-        _customerRepository = customerRepository;
-        _unitOfWork = unitOfWork;
-        _tenantProvider = tenantProvider;
-        _mapper = mapper;
+        _invoiceRepository = invoiceRepository ?? throw new ArgumentNullException(nameof(invoiceRepository));
+        _batchRepository = batchRepository ?? throw new ArgumentNullException(nameof(batchRepository));
+        _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
+        _customerRepository = customerRepository ?? throw new ArgumentNullException(nameof(customerRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantProvider = tenantProvider ?? throw new ArgumentNullException(nameof(tenantProvider));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
     public async Task<SaleInvoiceResponseDto> CreateSaleInvoiceAsync(CreateSaleInvoiceDto dto, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.CanAccessBranch(dto.BranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to create sales for branch {dto.BranchId}.");
+        }
+
         var tenantId = _tenantProvider.GetTenantId();
 
         int? customerId = null;
@@ -97,6 +106,9 @@ public class SalesService : ISalesService
             
             if (batch == null || batch.TenantId != tenantId)
                 throw new UnauthorizedAccessException($"Batch {item.BatchId} not found or belongs to another tenant.");
+
+            if (!_currentUserService.CanAccessBranch(batch.BranchId))
+                throw new UnauthorizedAccessException($"User is not authorized to sell from batch branch {batch.BranchId}.");
                 
             if (batch.BranchId != dto.BranchId)
                 throw new InvalidOperationException($"Batch {item.BatchId} belongs to a different branch.");
@@ -146,6 +158,9 @@ public class SalesService : ISalesService
 
         if (invoice == null || invoice.TenantId != tenantId)
             throw new UnauthorizedAccessException("Invoice not found or unauthorized.");
+
+        if (!_currentUserService.CanAccessBranch(invoice.BranchId))
+            throw new UnauthorizedAccessException($"User is not authorized to access invoice for branch {invoice.BranchId}.");
 
         return _mapper.Map<SaleInvoiceResponseDto>(invoice);
     }

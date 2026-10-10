@@ -14,4 +14,9 @@ public interface ICatalogService
     Task<MedicineDto> UpdateMedicineAsync(UpdateMedicineDto dto, CancellationToken cancellationToken = default);
     Task<MedicineDto> GetMedicineByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<IEnumerable<MedicineDto>> GetMedicinesAsync(CancellationToken cancellationToken = default);
+    Task<PharmaCore.Application.Common.DTOs.PagedResultDto<MedicineDto>> GetMedicinesPagedAsync(
+        int page = 1,
+        int pageSize = 20,
+        string? searchTerm = null,
+        CancellationToken cancellationToken = default);
 }

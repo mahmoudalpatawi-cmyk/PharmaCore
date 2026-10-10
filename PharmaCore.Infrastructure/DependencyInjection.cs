@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,13 +8,16 @@ using PharmaCore.Application.Finance.Interfaces;
 using PharmaCore.Application.Finance.Services;
 using PharmaCore.Application.Inventory.Interfaces;
 using PharmaCore.Application.Inventory.Services;
+using PharmaCore.Application.Identity.Interfaces;
 using PharmaCore.Application.Purchasing.Interfaces;
 using PharmaCore.Application.Purchasing.Services;
 using PharmaCore.Application.Sales.Interfaces;
 using PharmaCore.Application.Sales.Services;
 using PharmaCore.Application.Transfers.Interfaces;
 using PharmaCore.Application.Transfers.Services;
+using Microsoft.AspNetCore.Identity;
 using PharmaCore.Domain.Common;
+using PharmaCore.Domain.Entities.Identity;
 using PharmaCore.Infrastructure.Data;
 using PharmaCore.Infrastructure.Identity;
 using PharmaCore.Infrastructure.Repositories;
@@ -40,6 +44,19 @@ public static class DependencyInjection
         // ─── Tenant & Context Resolution ──────────────────────────────────────
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantProvider, HttpContextTenantProvider>();
+
+        // ─── Security & Cryptography ───────────────────────────────────────────
+        services.AddScoped<IPasswordHasher<ApplicationUser>, PasswordHasher<ApplicationUser>>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // ─── Validation ───────────────────────────────────────────────────────
+        var validatorScanResults = AssemblyScanner.FindValidatorsInAssembly(typeof(PharmaCore.Application.Catalog.Validators.CreateMedicineDtoValidator).Assembly);
+        foreach (var result in validatorScanResults)
+        {
+            services.AddScoped(result.InterfaceType, result.ValidatorType);
+        }
 
         // ─── Object Mapping ───────────────────────────────────────────────────
         services.AddAutoMapper(cfg => cfg.AddMaps(typeof(PharmaCore.Application.Catalog.Mappings.CatalogMappingProfile).Assembly));

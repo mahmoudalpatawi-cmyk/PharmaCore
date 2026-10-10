@@ -67,6 +67,47 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
     }
 
     /// <summary>
+    /// Returns a paged subset of entities matching the predicate along with the total count.
+    /// Uses database-level CountAsync and Skip/Take queries with AsNoTracking.
+    /// Global query filters (tenant isolation and soft-delete) remain fully effective.
+    /// </summary>
+    public Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(
+        Expression<Func<T, bool>> predicate,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        return GetPagedAsync(predicate, pageNumber, pageSize, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns a paged subset of entities matching the predicate along with the total count,
+    /// with an optional custom ordering expression. Defaults to OrderBy(e => e.Id) when orderBy is null.
+    /// Uses database-level CountAsync and Skip/Take queries with AsNoTracking.
+    /// Global query filters (tenant isolation and soft-delete) remain fully effective.
+    /// </summary>
+    public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(
+        Expression<Func<T, bool>> predicate,
+        int pageNumber,
+        int pageSize,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbSet.AsNoTracking().Where(predicate);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var orderedQuery = orderBy != null
+            ? orderBy(query)
+            : query.OrderBy(e => e.Id);
+
+        var items = await orderedQuery
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
     /// Adds an entity to the change tracker. Does not persist until
     /// IUnitOfWork.SaveChangesAsync is called.
     /// </summary>
