@@ -1,5 +1,8 @@
+using System;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace PharmaCore.API.Middleware;
 
@@ -19,14 +22,38 @@ public class GlobalExceptionHandler : IExceptionHandler
     {
         _logger.LogError(exception, "Exception occurred: {Message}", exception.Message);
 
+        int statusCode;
+        string title;
+        string detail;
+
+        if (exception is UnauthorizedAccessException)
+        {
+            var isAuthenticated = httpContext.User.Identity?.IsAuthenticated == true;
+            statusCode = isAuthenticated ? StatusCodes.Status403Forbidden : StatusCodes.Status401Unauthorized;
+            title = isAuthenticated ? "Forbidden" : "Unauthorized";
+            detail = exception.Message;
+        }
+        else if (exception is InvalidOperationException or ArgumentException)
+        {
+            statusCode = StatusCodes.Status400BadRequest;
+            title = "Bad Request";
+            detail = exception.Message;
+        }
+        else
+        {
+            statusCode = StatusCodes.Status500InternalServerError;
+            title = "Server Error";
+            detail = "An unexpected error occurred. Please try again later.";
+        }
+
         var problemDetails = new ProblemDetails
         {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Server Error",
-            Detail = "An unexpected error occurred. Please try again later."
+            Status = statusCode,
+            Title = title,
+            Detail = detail
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
+        httpContext.Response.StatusCode = statusCode;
 
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using PharmaCore.Application.Identity.Interfaces;
 using PharmaCore.Application.Transfers.DTOs;
 using PharmaCore.Application.Transfers.Interfaces;
 using PharmaCore.Domain.Common;
@@ -18,6 +19,7 @@ public class TransferDocumentService : ITransferDocumentService
     private readonly IRepository<StockTransferItem> _transferItemRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantProvider _tenantProvider;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public TransferDocumentService(
@@ -25,17 +27,29 @@ public class TransferDocumentService : ITransferDocumentService
         IRepository<StockTransferItem> transferItemRepository,
         IUnitOfWork unitOfWork,
         ITenantProvider tenantProvider,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
-        _transferRepository = transferRepository;
-        _transferItemRepository = transferItemRepository;
-        _unitOfWork = unitOfWork;
-        _tenantProvider = tenantProvider;
-        _mapper = mapper;
+        _transferRepository = transferRepository ?? throw new ArgumentNullException(nameof(transferRepository));
+        _transferItemRepository = transferItemRepository ?? throw new ArgumentNullException(nameof(transferItemRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantProvider = tenantProvider ?? throw new ArgumentNullException(nameof(tenantProvider));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
     public async Task<TransferDocumentResponseDto> CreateTransferDocumentAsync(CreateTransferDocumentDto dto, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.CanAccessBranch(dto.SourceBranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to create transfer from source branch {dto.SourceBranchId}.");
+        }
+
+        if (!_currentUserService.CanAccessBranch(dto.DestinationBranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to create transfer to destination branch {dto.DestinationBranchId}.");
+        }
+
         var tenantId = _tenantProvider.GetTenantId();
 
         var transfer = new StockTransfer
@@ -72,6 +86,21 @@ public class TransferDocumentService : ITransferDocumentService
         
         if (transfer == null || transfer.TenantId != tenantId)
             throw new UnauthorizedAccessException("Transfer document not found or unauthorized.");
+
+        if (!_currentUserService.CanAccessBranch(transfer.FromBranchId) && !_currentUserService.CanAccessBranch(transfer.ToBranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to update transfer between branch {transfer.FromBranchId} and branch {transfer.ToBranchId}.");
+        }
+
+        if (dto.NewStatus == StockTransferStatus.InTransit && !_currentUserService.CanAccessBranch(transfer.FromBranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to dispatch transfer for source branch {transfer.FromBranchId}.");
+        }
+
+        if (dto.NewStatus == StockTransferStatus.Completed && !_currentUserService.CanAccessBranch(transfer.ToBranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to complete transfer for destination branch {transfer.ToBranchId}.");
+        }
 
         // Workflow Validation
         bool isValidTransition = false;
@@ -115,6 +144,11 @@ public class TransferDocumentService : ITransferDocumentService
         if (transfer == null || transfer.TenantId != tenantId)
             throw new UnauthorizedAccessException("Transfer document not found or unauthorized.");
 
+        if (!_currentUserService.CanAccessBranch(transfer.FromBranchId) && !_currentUserService.CanAccessBranch(transfer.ToBranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to view transfer between branch {transfer.FromBranchId} and branch {transfer.ToBranchId}.");
+        }
+
         if (transfer.Items == null || !transfer.Items.Any())
         {
             var items = await _transferItemRepository.ListAsync(i => i.TransferId == transfer.Id && i.TenantId == tenantId, cancellationToken);
@@ -126,6 +160,11 @@ public class TransferDocumentService : ITransferDocumentService
 
     public async Task<IEnumerable<TransferDocumentResponseDto>> GetTransferDocumentsByBranchAsync(int branchId, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.CanAccessBranch(branchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to access transfer documents for branch {branchId}.");
+        }
+
         var tenantId = _tenantProvider.GetTenantId();
 
         var transfers = await _transferRepository.ListAsync(

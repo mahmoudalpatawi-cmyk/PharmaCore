@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using PharmaCore.Application.Finance.DTOs;
 using PharmaCore.Application.Finance.Interfaces;
+using PharmaCore.Application.Identity.Interfaces;
 using PharmaCore.Domain.Common;
 using PharmaCore.Domain.Entities.Finance;
 using PharmaCore.Domain.Entities.Sales;
@@ -20,6 +21,7 @@ public class FinanceService : IFinanceService
     private readonly IRepository<SaleInvoice> _saleInvoiceRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantProvider _tenantProvider;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public FinanceService(
@@ -28,18 +30,25 @@ public class FinanceService : IFinanceService
         IRepository<SaleInvoice> saleInvoiceRepository,
         IUnitOfWork unitOfWork,
         ITenantProvider tenantProvider,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
-        _shiftRepository = shiftRepository;
-        _cashTransactionRepository = cashTransactionRepository;
-        _saleInvoiceRepository = saleInvoiceRepository;
-        _unitOfWork = unitOfWork;
-        _tenantProvider = tenantProvider;
-        _mapper = mapper;
+        _shiftRepository = shiftRepository ?? throw new ArgumentNullException(nameof(shiftRepository));
+        _cashTransactionRepository = cashTransactionRepository ?? throw new ArgumentNullException(nameof(cashTransactionRepository));
+        _saleInvoiceRepository = saleInvoiceRepository ?? throw new ArgumentNullException(nameof(saleInvoiceRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantProvider = tenantProvider ?? throw new ArgumentNullException(nameof(tenantProvider));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
     public async Task<ShiftResponseDto> OpenShiftAsync(OpenShiftDto dto, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.CanAccessBranch(dto.BranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to open a shift for branch {dto.BranchId}.");
+        }
+
         var tenantId = _tenantProvider.GetTenantId();
 
         var existingShifts = await _shiftRepository.ListAsync(s => s.TenantId == tenantId && s.BranchId == dto.BranchId && s.Status == ShiftStatus.Open, cancellationToken);
@@ -68,6 +77,9 @@ public class FinanceService : IFinanceService
         var shift = await _shiftRepository.GetByIdAsync(dto.ShiftId, cancellationToken);
         if (shift == null || shift.TenantId != tenantId)
             throw new UnauthorizedAccessException("Shift not found or unauthorized.");
+
+        if (!_currentUserService.CanAccessBranch(shift.BranchId))
+            throw new UnauthorizedAccessException($"User is not authorized to close shift for branch {shift.BranchId}.");
 
         if (shift.Status != ShiftStatus.Open)
             throw new InvalidOperationException("Shift is already closed.");
@@ -106,6 +118,9 @@ public class FinanceService : IFinanceService
         if (shift == null || shift.TenantId != tenantId)
             throw new UnauthorizedAccessException("Shift not found or unauthorized.");
 
+        if (!_currentUserService.CanAccessBranch(shift.BranchId))
+            throw new UnauthorizedAccessException($"User is not authorized to record cash transactions for branch {shift.BranchId}.");
+
         if (shift.Status != ShiftStatus.Open)
             throw new InvalidOperationException("Cannot add cash transaction to a closed shift.");
 
@@ -128,6 +143,11 @@ public class FinanceService : IFinanceService
 
     public async Task<ShiftResponseDto?> GetCurrentActiveShiftAsync(int branchId, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.CanAccessBranch(branchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to access active shift for branch {branchId}.");
+        }
+
         var tenantId = _tenantProvider.GetTenantId();
         var shifts = await _shiftRepository.ListAsync(s => s.TenantId == tenantId && s.BranchId == branchId && s.Status == ShiftStatus.Open, cancellationToken);
         

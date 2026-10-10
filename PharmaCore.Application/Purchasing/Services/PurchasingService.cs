@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
+using PharmaCore.Application.Identity.Interfaces;
 using PharmaCore.Application.Purchasing.DTOs;
 using PharmaCore.Application.Purchasing.Interfaces;
 using PharmaCore.Domain.Common;
@@ -20,6 +21,7 @@ public class PurchasingService : IPurchasingService
     private readonly IRepository<StockMovement> _stockMovementRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantProvider _tenantProvider;
+    private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public PurchasingService(
@@ -29,15 +31,17 @@ public class PurchasingService : IPurchasingService
         IRepository<StockMovement> stockMovementRepository,
         IUnitOfWork unitOfWork,
         ITenantProvider tenantProvider,
+        ICurrentUserService currentUserService,
         IMapper mapper)
     {
-        _invoiceRepository = invoiceRepository;
-        _supplierRepository = supplierRepository;
-        _batchRepository = batchRepository;
-        _stockMovementRepository = stockMovementRepository;
-        _unitOfWork = unitOfWork;
-        _tenantProvider = tenantProvider;
-        _mapper = mapper;
+        _invoiceRepository = invoiceRepository ?? throw new ArgumentNullException(nameof(invoiceRepository));
+        _supplierRepository = supplierRepository ?? throw new ArgumentNullException(nameof(supplierRepository));
+        _batchRepository = batchRepository ?? throw new ArgumentNullException(nameof(batchRepository));
+        _stockMovementRepository = stockMovementRepository ?? throw new ArgumentNullException(nameof(stockMovementRepository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _tenantProvider = tenantProvider ?? throw new ArgumentNullException(nameof(tenantProvider));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
 
     public async Task<SupplierDto> CreateSupplierAsync(CreateSupplierDto dto, CancellationToken cancellationToken = default)
@@ -60,6 +64,11 @@ public class PurchasingService : IPurchasingService
 
     public async Task<PurchaseInvoiceResponseDto> CreatePurchaseInvoiceAsync(CreatePurchaseInvoiceDto dto, CancellationToken cancellationToken = default)
     {
+        if (!_currentUserService.CanAccessBranch(dto.BranchId))
+        {
+            throw new UnauthorizedAccessException($"User is not authorized to create purchase invoices for branch {dto.BranchId}.");
+        }
+
         var tenantId = _tenantProvider.GetTenantId();
 
         var supplier = await _supplierRepository.GetByIdAsync(dto.SupplierId, cancellationToken);
@@ -102,7 +111,7 @@ public class PurchasingService : IPurchasingService
                     itemDto.MedicineId,
                     itemDto.BatchNumber,
                     itemDto.ExpiryDate,
-                    0, // Initial will be added via AddStock below to trigger movement logically if needed, but we do it manually to record movement properly
+                    0,
                     itemDto.CostPrice,
                     itemDto.SellingPrice,
                     dto.SupplierId
@@ -111,6 +120,9 @@ public class PurchasingService : IPurchasingService
             }
             else
             {
+                if (!_currentUserService.CanAccessBranch(batch.BranchId))
+                    throw new UnauthorizedAccessException($"User is not authorized to update batch for branch {batch.BranchId}.");
+
                 quantityBefore = batch.Quantity;
                 batch.CostPrice = itemDto.CostPrice;
                 batch.SellingPrice = itemDto.SellingPrice;
@@ -157,6 +169,9 @@ public class PurchasingService : IPurchasingService
 
         if (invoice == null || invoice.TenantId != tenantId)
             throw new UnauthorizedAccessException("Invoice not found or unauthorized.");
+
+        if (!_currentUserService.CanAccessBranch(invoice.BranchId))
+            throw new UnauthorizedAccessException($"User is not authorized to access invoice for branch {invoice.BranchId}.");
 
         return _mapper.Map<PurchaseInvoiceResponseDto>(invoice);
     }
