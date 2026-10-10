@@ -9,6 +9,6 @@ public class CreateSupplierDtoValidator : AbstractValidator<CreateSupplierDto>
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Supplier name is required.")
-            .MaximumLength(200);
+            .MaximumLength(200).WithMessage("Supplier name cannot exceed 200 characters.");
     }
 }
