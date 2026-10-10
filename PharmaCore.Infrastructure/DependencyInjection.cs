@@ -15,6 +15,7 @@ using PharmaCore.Application.Transfers.Interfaces;
 using PharmaCore.Application.Transfers.Services;
 using PharmaCore.Domain.Common;
 using PharmaCore.Infrastructure.Data;
+using PharmaCore.Infrastructure.Identity;
 using PharmaCore.Infrastructure.Repositories;
 
 namespace PharmaCore.Infrastructure;
@@ -35,6 +36,13 @@ public static class DependencyInjection
         // SaveChangesAsync are committed together in a single EF Core transaction.
         services.AddScoped(typeof(IRepository<>), typeof(GenericRepository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // ─── Tenant & Context Resolution ──────────────────────────────────────
+        services.AddHttpContextAccessor();
+        services.AddScoped<ITenantProvider, HttpContextTenantProvider>();
+
+        // ─── Object Mapping ───────────────────────────────────────────────────
+        services.AddAutoMapper(cfg => cfg.AddMaps(typeof(PharmaCore.Application.Catalog.Mappings.CatalogMappingProfile).Assembly));
 
         // ─── Application Services ──────────────────────────────────────────────
         services.AddScoped<ICatalogService, CatalogService>();
