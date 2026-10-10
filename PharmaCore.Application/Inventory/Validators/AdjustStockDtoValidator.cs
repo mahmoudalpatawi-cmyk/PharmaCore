@@ -7,13 +7,13 @@ public class AdjustStockDtoValidator : AbstractValidator<AdjustStockDto>
 {
     public AdjustStockDtoValidator()
     {
-        RuleFor(x => x.BatchId).GreaterThan(0);
+        RuleFor(x => x.BatchId).GreaterThan(0).WithMessage("Batch ID must be greater than zero.");
         
         RuleFor(x => x.NewQuantity)
             .GreaterThanOrEqualTo(0).WithMessage("Adjusted quantity cannot be negative.");
 
         RuleFor(x => x.Reason)
             .NotEmpty().WithMessage("An adjustment reason is required.")
-            .MinimumLength(5);
+            .MinimumLength(5).WithMessage("Reason must be at least 5 characters long.");
     }
 }

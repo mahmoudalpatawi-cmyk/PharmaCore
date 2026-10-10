@@ -7,7 +7,7 @@ public class OpenShiftDtoValidator : AbstractValidator<OpenShiftDto>
 {
     public OpenShiftDtoValidator()
     {
-        RuleFor(x => x.BranchId).GreaterThan(0);
-        RuleFor(x => x.StartingCash).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.BranchId).GreaterThan(0).WithMessage("Branch ID must be greater than zero.");
+        RuleFor(x => x.StartingCash).GreaterThanOrEqualTo(0).WithMessage("Starting cash cannot be negative.");
     }
 }
