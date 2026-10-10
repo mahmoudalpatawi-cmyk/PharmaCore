@@ -52,7 +52,11 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // ─── Validation ───────────────────────────────────────────────────────
-        services.AddScoped<IValidator<PharmaCore.Application.Identity.DTOs.LoginRequestDto>, PharmaCore.Application.Identity.Validators.LoginRequestDtoValidator>();
+        var validatorScanResults = AssemblyScanner.FindValidatorsInAssembly(typeof(PharmaCore.Application.Catalog.Validators.CreateMedicineDtoValidator).Assembly);
+        foreach (var result in validatorScanResults)
+        {
+            services.AddScoped(result.InterfaceType, result.ValidatorType);
+        }
 
         // ─── Object Mapping ───────────────────────────────────────────────────
         services.AddAutoMapper(cfg => cfg.AddMaps(typeof(PharmaCore.Application.Catalog.Mappings.CatalogMappingProfile).Assembly));

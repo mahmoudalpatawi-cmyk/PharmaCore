@@ -78,6 +78,12 @@ public class Batch : BaseEntity, IMustHaveTenant, ISoftDelete
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
 
+    /// <summary>
+    /// Concurrency token (row version) for optimistic concurrency control.
+    /// Handled automatically by EF Core / SQL Server rowversion column.
+    /// </summary>
+    public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
+
     // ─── Domain Methods ───────────────────────────────────────────────────────
 
     /// <summary>

@@ -22,6 +22,7 @@ using PharmaCore.Application.Transfers.DTOs;
 using PharmaCore.Application.Transfers.Mappings;
 using PharmaCore.Application.Transfers.Services;
 using PharmaCore.Domain.Common;
+using PharmaCore.Domain.Entities.Catalog;
 using PharmaCore.Domain.Entities.Finance;
 using PharmaCore.Domain.Entities.Inventory;
 using PharmaCore.Domain.Entities.Purchasing;
@@ -95,10 +96,11 @@ public class BranchAuthorizationServiceTests
         var (db, uow, tp) = CreateContext(dbName);
         var batchRepo = new GenericRepository<Batch>(db);
         var movementRepo = new GenericRepository<StockMovement>(db);
+        var medicineRepo = new GenericRepository<Medicine>(db);
 
         // User is bound to Branch 1
         var currentUser = new TestCurrentUserService { BranchId = 1 };
-        var service = new InventoryService(batchRepo, movementRepo, uow, tp, currentUser, _mapper);
+        var service = new InventoryService(batchRepo, movementRepo, medicineRepo, uow, tp, currentUser, _mapper);
 
         // Attempting to add batch to Branch 2
         var dto = new AddBatchDto
@@ -127,10 +129,22 @@ public class BranchAuthorizationServiceTests
         var (db, uow, tp) = CreateContext(dbName);
         var batchRepo = new GenericRepository<Batch>(db);
         var movementRepo = new GenericRepository<StockMovement>(db);
+        var medicineRepo = new GenericRepository<Medicine>(db);
+
+        var medicine = new Medicine
+        {
+            Id = 10,
+            TenantId = _tenantId,
+            Name = "Amoxicillin",
+            DosageForm = "Capsule",
+            Strength = "500mg"
+        };
+        db.Medicines.Add(medicine);
+        await db.SaveChangesAsync();
 
         // User is authorized for Branch 1
         var currentUser = new TestCurrentUserService { BranchId = 1 };
-        var service = new InventoryService(batchRepo, movementRepo, uow, tp, currentUser, _mapper);
+        var service = new InventoryService(batchRepo, movementRepo, medicineRepo, uow, tp, currentUser, _mapper);
 
         var dto = new AddBatchDto
         {
@@ -156,6 +170,7 @@ public class BranchAuthorizationServiceTests
         var (db, uow, tp) = CreateContext(dbName);
         var batchRepo = new GenericRepository<Batch>(db);
         var movementRepo = new GenericRepository<StockMovement>(db);
+        var medicineRepo = new GenericRepository<Medicine>(db);
 
         var sourceBatch = new Batch(_tenantId, 2, 10, "B-SRC", DateTime.UtcNow.AddYears(1), 100, 5m, 10m);
         var destBatch = new Batch(_tenantId, 1, 10, "B-DST", DateTime.UtcNow.AddYears(1), 50, 5m, 10m);
@@ -164,7 +179,7 @@ public class BranchAuthorizationServiceTests
 
         // User is bound to Branch 1 (has destination, lacks source branch 2)
         var currentUser = new TestCurrentUserService { BranchId = 1 };
-        var service = new InventoryService(batchRepo, movementRepo, uow, tp, currentUser, _mapper);
+        var service = new InventoryService(batchRepo, movementRepo, medicineRepo, uow, tp, currentUser, _mapper);
 
         var dto = new StockTransferDto
         {
@@ -191,6 +206,7 @@ public class BranchAuthorizationServiceTests
         var (db, uow, tp) = CreateContext(dbName);
         var batchRepo = new GenericRepository<Batch>(db);
         var movementRepo = new GenericRepository<StockMovement>(db);
+        var medicineRepo = new GenericRepository<Medicine>(db);
 
         var sourceBatch = new Batch(_tenantId, 1, 10, "B-SRC", DateTime.UtcNow.AddYears(1), 100, 5m, 10m);
         var destBatch = new Batch(_tenantId, 2, 10, "B-DST", DateTime.UtcNow.AddYears(1), 50, 5m, 10m);
@@ -199,7 +215,7 @@ public class BranchAuthorizationServiceTests
 
         // User is bound to Branch 1 (has source, lacks destination branch 2)
         var currentUser = new TestCurrentUserService { BranchId = 1 };
-        var service = new InventoryService(batchRepo, movementRepo, uow, tp, currentUser, _mapper);
+        var service = new InventoryService(batchRepo, movementRepo, medicineRepo, uow, tp, currentUser, _mapper);
 
         var dto = new StockTransferDto
         {
@@ -225,6 +241,7 @@ public class BranchAuthorizationServiceTests
         var (db, uow, tp) = CreateContext(dbName);
         var batchRepo = new GenericRepository<Batch>(db);
         var movementRepo = new GenericRepository<StockMovement>(db);
+        var medicineRepo = new GenericRepository<Medicine>(db);
 
         var batch = new Batch(_tenantId, 2, 10, "B-ADJ", DateTime.UtcNow.AddYears(1), 100, 5m, 10m);
         db.Batches.Add(batch);
@@ -232,7 +249,7 @@ public class BranchAuthorizationServiceTests
 
         // User bound to Branch 1
         var currentUser = new TestCurrentUserService { BranchId = 1 };
-        var service = new InventoryService(batchRepo, movementRepo, uow, tp, currentUser, _mapper);
+        var service = new InventoryService(batchRepo, movementRepo, medicineRepo, uow, tp, currentUser, _mapper);
 
         var dto = new AdjustStockDto
         {
@@ -254,6 +271,7 @@ public class BranchAuthorizationServiceTests
         var (db, uow, tp) = CreateContext(dbName);
         var batchRepo = new GenericRepository<Batch>(db);
         var movementRepo = new GenericRepository<StockMovement>(db);
+        var medicineRepo = new GenericRepository<Medicine>(db);
 
         var batch = new Batch(_tenantId, 5, 10, "B-5", DateTime.UtcNow.AddYears(1), 10, 5m, 10m);
         db.Batches.Add(batch);
@@ -261,7 +279,7 @@ public class BranchAuthorizationServiceTests
 
         // User bound to Branch 1
         var currentUser = new TestCurrentUserService { BranchId = 1 };
-        var service = new InventoryService(batchRepo, movementRepo, uow, tp, currentUser, _mapper);
+        var service = new InventoryService(batchRepo, movementRepo, medicineRepo, uow, tp, currentUser, _mapper);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.GetBatchAsync(batch.Id));
     }

@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PharmaCore.Application.Common.Exceptions;
 
 namespace PharmaCore.API.Middleware;
 
@@ -33,6 +36,30 @@ public class GlobalExceptionHandler : IExceptionHandler
             title = isAuthenticated ? "Forbidden" : "Unauthorized";
             detail = exception.Message;
         }
+        else if (exception is NotFoundException or KeyNotFoundException)
+        {
+            statusCode = StatusCodes.Status404NotFound;
+            title = "Not Found";
+            detail = exception.Message;
+        }
+        else if (exception is ConflictException)
+        {
+            statusCode = StatusCodes.Status409Conflict;
+            title = "Conflict";
+            detail = exception.Message;
+        }
+        else if (exception is DbUpdateConcurrencyException)
+        {
+            statusCode = StatusCodes.Status409Conflict;
+            title = "Conflict";
+            detail = "The record was modified concurrently by another process. Please reload and retry.";
+        }
+        else if (exception is DbUpdateException dbEx && IsBarcodeConflict(dbEx))
+        {
+            statusCode = StatusCodes.Status409Conflict;
+            title = "Conflict";
+            detail = "A medicine with the specified barcode already exists.";
+        }
         else if (exception is InvalidOperationException or ArgumentException)
         {
             statusCode = StatusCodes.Status400BadRequest;
@@ -58,5 +85,13 @@ public class GlobalExceptionHandler : IExceptionHandler
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
         return true;
+    }
+
+    private static bool IsBarcodeConflict(DbUpdateException ex)
+    {
+        var msg = ex.InnerException?.Message ?? ex.Message;
+        return msg.Contains("IX_Medicines_TenantId_Barcode", StringComparison.OrdinalIgnoreCase)
+            || (msg.Contains("Barcode", StringComparison.OrdinalIgnoreCase) &&
+                (msg.Contains("unique", StringComparison.OrdinalIgnoreCase) || msg.Contains("duplicate", StringComparison.OrdinalIgnoreCase)));
     }
 }

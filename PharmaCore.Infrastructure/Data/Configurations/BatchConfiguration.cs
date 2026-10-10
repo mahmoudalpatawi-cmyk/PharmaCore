@@ -20,6 +20,9 @@ public class BatchConfiguration : IEntityTypeConfiguration<Batch>
         builder.Property(b => b.SellingPrice)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(b => b.RowVersion)
+            .IsRowVersion();
+
         // Add a database check constraint to ensure quantity is never negative
         builder.ToTable(t => t.HasCheckConstraint("CK_Batch_Quantity_NonNegative", "[Quantity] >= 0"));
 
